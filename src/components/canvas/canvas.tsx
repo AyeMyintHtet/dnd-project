@@ -8,8 +8,13 @@ import {
     closestCenter,
     DragEndEvent,
     DragStartEvent,
-    DragOverEvent
+    DragOverEvent,
+    useSensor,
+    useSensors,
+    PointerSensor,
+    KeyboardSensor,
 } from "@dnd-kit/core";
+import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { useBuilderStore } from "@/core/store";
 import { RecursiveRenderer } from "./recursive-renderer";
 import { cn } from "@/lib/utils";
@@ -17,20 +22,35 @@ import { cn } from "@/lib/utils";
 export const Canvas = () => {
     const { nodes, addNode, moveNode, setDraggingId } = useBuilderStore();
 
+    // Configure sensors to ensure good interaction (especially avoiding conflicts with click)
+    const sensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8, // Drag must move 8px before activating
+            },
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
+    );
+
     // Drop area for the root
     const { setNodeRef } = useDroppable({
         id: "canvas-root",
     });
 
     const handleDragStart = (event: DragStartEvent) => {
+        console.log("Drag Start:", event);
         setDraggingId(event.active.id as string);
     };
 
     const handleDragOver = (event: DragOverEvent) => {
+        console.log("Drag Over:", event);
         // Logic to handle nested drops or placeholder prediction
     };
 
     const handleDragEnd = (event: DragEndEvent) => {
+        console.log("Drag End:", event);
         setDraggingId(null);
         const { active, over } = event;
 
@@ -76,13 +96,13 @@ export const Canvas = () => {
             }
 
         } else if (active.id !== over.id) {
-            // moveNode logic (reordering)
-            // moveNode(active.id as string, over.id as string);
+            moveNode(active.id as string, over.id as string);
         }
     };
 
     return (
         <DndContext
+            sensors={sensors}
             collisionDetection={closestCenter}
             onDragStart={handleDragStart}
             onDragOver={handleDragOver}
